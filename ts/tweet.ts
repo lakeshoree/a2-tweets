@@ -75,7 +75,37 @@ class Tweet {
             return "unknown";
         }
         //TODO: parse the activity type from the text of the tweet
-        return "";
+        let words = this.text.split(" ");
+
+        // Examine each word until we find a distance, then grab the next word which is activity
+        for (let i = 0; i < words.length; i++) {
+            if (words[i] === "km" || words[i] === "mi") {
+                // Taking up to two words after the distnace to grab multiword activities too
+                let activity = words.slice(i + 1, i + 3).join(" ");
+                activity = activity.split(" -")[0];
+                activity = activity.split(" with")[0];
+                activity = activity.split(" in")[0];
+                return activity.trim();
+            }
+        }
+
+        // Check if the activities are measured by time
+        if (this.text.startsWith("Just posted a ") || 
+            this.text.startsWith("Just posted an ")) {
+
+                let start = this.text.startsWith("Just posted an ") ? 15 : 14;
+                let end = this.text.indexOf(" in ", start);
+
+                if (end !== -1) {
+                    return this.text.substring(start,end).trim();
+                }
+        }
+
+        if (this.text.toLowerCase().startsWith("i just ran with")) {
+            return "run";
+        }
+
+        return "unknown";
     }
 
     get distance():number {
@@ -83,11 +113,60 @@ class Tweet {
             return 0;
         }
         //TODO: prase the distance from the text of the tweet
+        let words = this.text.split(" ");
+        
+        for (let i = 0; i < words.length; i++) {
+            if (words[i] === "km" || words[i] === "mi") {
+                let distance = parseFloat(words[i-1]);
+        
+
+            if (isNaN(distance)) {
+                return 0;
+            }
+
+            // If kilometers then convert to miles
+            if (words[i] == "km") {
+                return distance / 1.609;
+            }
+
+            return distance;
+
+            }
+        }
+
+        // In the case that no distance is found
         return 0;
     }
 
     getHTMLTableRow(rowNumber:number):string {
         //TODO: return a table row which summarizes the tweet with a clickable link to the RunKeeper activity
-        return "<tr></tr>";
+        // Extracting the activity link from the original tweet
+        let urlMatch = this.text.match(/https?:\/\/[^\s]+/);
+        let url = urlMatch ? urlMatch[0] : "";
+
+        // Escape special HTML characters in user-written text
+        let safeText = this.writtenText
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#39;");
+
+        // Create a clickable link if a URL exists
+        let tweetContent = safeText;
+
+        if (url !== "") {
+            tweetContent += ` <a href="${url}" target="_blank" rel="noopener noreferrer">View activity</a>`;
+        }
+
+        // Return a complete HTML table row
+        return `
+            <tr>
+                <td>${rowNumber}</td>
+                <td>${this.activityType}</td>
+                <td>${tweetContent}</td>
+            </tr>
+        `;
+
     }
 }
